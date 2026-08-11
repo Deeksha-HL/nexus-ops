@@ -190,9 +190,29 @@ Location: **`postman/Nexus-Ops.postman_collection.json`**
 
 Set `baseUrl` to `http://localhost:4000` locally or `https://nexus-ops-api.onrender.com` for production. Run **Login (Sales)** first to populate the `token` variable.
 
+## Round 1 submission (fill before Google Form)
+
+| Item | Your link |
+| --- | --- |
+| **GitHub repository** | https://github.com/Deeksha-HL/nexus-ops |
+| **Live frontend (Vercel)** | _Add after deploy — e.g. https://nexus-ops.vercel.app_ |
+| **Live backend API (Render)** | https://nexus-ops-api.onrender.com |
+| **Screen recording** | _Add Google Drive / Loom / YouTube link_ |
+| **Postman collection** | `postman/Nexus-Ops.postman_collection.json` (in repo) |
+
+**Test credentials (all roles):** password `Campus@2026` — see table above.
+
+**Recommended 2–3 min demo flow for recording:**
+1. Login as **Sales** → dashboard (Operations Pulse)
+2. **Customers** → search → add/edit customer → add follow-up
+3. Login as **Warehouse** → **Inventory** → add/edit product → stock IN movement
+4. Login as **Sales** → **Challans** → create multi-product draft → confirm → show reduced stock + movement log
+5. Login as **Accounts** → show read-only access
+
 ## Submission checklist
 
-- [ ] Push repository to GitHub with incremental commits
-- [ ] Deploy frontend to Vercel; add URL here
-- [ ] Record a 2-minute flow: login → customer search → stock alert → confirm challan → movement log
-- [ ] Share test credentials and Postman collection
+- [x] Push repository to GitHub with incremental commits
+- [ ] Deploy frontend to Vercel; add URL in table above
+- [x] Backend deployed on Render
+- [ ] Record 2–3 minute screen demo (mandatory for Round 1)
+- [ ] Submit Google Form with repo, URLs, recording link, and credentials
