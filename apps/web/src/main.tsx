@@ -28,6 +28,38 @@ function can(role: Role, action: keyof typeof PERMS) {
   return PERMS[action].includes(role);
 }
 
+function PermButton({ allowed, deniedTitle, className, children, onClick, disabled, title }: {
+  allowed: boolean; deniedTitle?: string; className?: string; children: ReactNode;
+  onClick?: () => void; disabled?: boolean; title?: string;
+}) {
+  return (
+    <button
+      className={className}
+      disabled={!allowed || disabled}
+      title={!allowed ? (deniedTitle || 'Your role does not have access to this action') : title}
+      onClick={allowed ? onClick : undefined}
+    >
+      {children}
+    </button>
+  );
+}
+
+function RoleHint({ user, module }: { user: User; module: 'inventory' | 'crm' | 'challans' }) {
+  const hints = {
+    inventory: { roles: ['ADMIN', 'WAREHOUSE'] as Role[], who: 'Admin or Warehouse', action: 'add, edit products and record stock movements' },
+    crm: { roles: ['ADMIN', 'SALES'] as Role[], who: 'Admin or Sales', action: 'add, edit customers and follow-ups' },
+    challans: { roles: ['ADMIN', 'SALES'] as Role[], who: 'Admin or Sales', action: 'create and confirm challans' },
+  };
+  const h = hints[module];
+  if (h.roles.includes(user.role)) return null;
+  return (
+    <div className="role-hint">
+      Viewing as <b>{user.role}</b>. Sign in as {h.who} to {h.action}.
+      {module === 'inventory' && <> Try <b>warehouse@nexus.test</b> or <b>admin@nexus.test</b>.</>}
+    </div>
+  );
+}
+
 async function api<T = unknown>(path: string, token?: string, init?: RequestInit): Promise<T> {
   const r = await fetch(API + path, {
     ...init,
@@ -315,7 +347,7 @@ function Login({ onLogin }: { onLogin: (t: string, u: User) => void }) {
         <label>Password<input value={password} onChange={e => setPassword(e.target.value)} type="password" autoComplete="current-password" /></label>
         {error && <p className="error">{error}</p>}
         <button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'} <ArrowUpRight size={17} /></button>
-        <p className="hint">Try admin@nexus.test, sales@nexus.test,<br />warehouse@nexus.test or accounts@nexus.test</p>
+        <p className="hint">Try <b>admin@nexus.test</b> (all access), <b>warehouse@nexus.test</b> (inventory),<br /><b>sales@nexus.test</b> (CRM/challans), or <b>accounts@nexus.test</b> (read-only)</p>
       </form>
     </main>
   );
@@ -343,8 +375,10 @@ function Dashboard({ token, user }: { token: string; user: User }) {
           <h1>Operations pulse</h1>
           <p className="muted">A clear view of the work that matters today.</p>
         </div>
-        {can(user.role, 'createChallan') && (
+        {can(user.role, 'createChallan') ? (
           <button onClick={() => navigate('challans')}><Plus size={17} /> New challan</button>
+        ) : (
+          <PermButton allowed={false} deniedTitle="Sales or Admin role required"><Plus size={17} /> New challan</PermButton>
         )}
       </div>
       <div className="metrics">
@@ -408,8 +442,8 @@ function CustomerDetail({ token, user, id }: { token: string; user: User; id: st
           <p className="muted">{String(customer.name)} · {String(customer.mobile)}</p>
         </div>
         <div className="head-actions">
-          {can(user.role, 'addFollowup') && <button className="quiet" onClick={() => setAddingFollowup(true)}><Plus size={16} /> Add follow-up</button>}
-          {can(user.role, 'editCustomer') && <button onClick={() => setEditing(true)}><Edit2 size={16} /> Edit</button>}
+          <PermButton allowed={can(user.role, 'addFollowup')} className="quiet" onClick={() => setAddingFollowup(true)} deniedTitle="Sales or Admin role required"><Plus size={16} /> Add follow-up</PermButton>
+          <PermButton allowed={can(user.role, 'editCustomer')} onClick={() => setEditing(true)} deniedTitle="Sales or Admin role required"><Edit2 size={16} /> Edit</PermButton>
         </div>
       </div>
       <div className="detail-grid">
@@ -457,40 +491,60 @@ function Customers({ token, user }: { token: string; user: User }) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const limit = 10;
 
-  const load = (p = page, q = search) =>
-    api<{ data: Record<string, unknown>[]; total: number }>(`/customers?search=${encodeURIComponent(q)}&page=${p}&limit=${limit}`, token)
+  const load = (p = page, q = search, status = statusFilter, type = typeFilter) => {
+    const qs = new URLSearchParams({ search: q, page: String(p), limit: String(limit) });
+    if (status) qs.set('status', status);
+    if (type) qs.set('type', type);
+    return api<{ data: Record<string, unknown>[]; total: number }>(`/customers?${qs}`, token)
       .then(x => { setData(x.data); setTotal(x.total); });
+  };
 
   useEffect(() => { void load(); }, [token]);
 
   if (id) return <CustomerDetail token={token} user={user} id={id} />;
 
   const pages = Math.max(1, Math.ceil(total / limit));
+  const runSearch = () => { setPage(1); void load(1, search, statusFilter, typeFilter); };
 
   return (
     <>
       <div className="page-head">
         <div><p className="eyebrow">CRM</p><h1>Customers</h1><p className="muted">Track relationships, not just records.</p></div>
-        {can(user.role, 'createCustomer') && <button onClick={() => setAdding(true)}><Plus size={17} /> Add customer</button>}
+        <PermButton allowed={can(user.role, 'createCustomer')} onClick={() => setAdding(true)} deniedTitle="Sales or Admin role required"><Plus size={17} /> Add customer</PermButton>
       </div>
-      <div className="toolbar">
+      <RoleHint user={user} module="crm" />
+      <div className="toolbar toolbar-filters">
         <Search size={18} />
-        <input placeholder="Search customer, business or mobile" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && (setPage(1), load(1, search))} />
-        <button className="quiet" onClick={() => { setPage(1); void load(1, search); }}>Search</button>
+        <input placeholder="Search customer, business or mobile" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && runSearch()} />
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option value="LEAD">Lead</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option>
+        </select>
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} aria-label="Filter by type">
+          <option value="">All types</option>
+          <option value="RETAIL">Retail</option><option value="WHOLESALE">Wholesale</option><option value="DISTRIBUTOR">Distributor</option>
+        </select>
+        <button className="quiet" onClick={runSearch}>Search</button>
       </div>
       <article className="panel">
         {data.length ? (
           <>
-            <table><thead><tr><th>Customer</th><th>Business</th><th>Type</th><th>Next follow-up</th><th>Status</th></tr></thead>
+            <table><thead><tr><th>Customer</th><th>Business</th><th>Type</th><th>Next follow-up</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>{data.map(c => (
                 <tr key={String(c.id)} className="clickable" onClick={() => navigate('customers', String(c.id))}>
                   <td><b>{String(c.name)}</b><small>{String(c.mobile)} · {String(c.email || 'No email')}</small></td>
                   <td>{String(c.business_name)}</td><td>{String(c.type)}</td>
                   <td>{fmtDate(c.follow_up_date as string)}</td>
                   <td><Badge>{String(c.status)}</Badge></td>
+                  <td className="actions" onClick={e => e.stopPropagation()}>
+                    <PermButton allowed={can(user.role, 'editCustomer')} className="row-action" onClick={() => setEditing(c)} deniedTitle="Sales or Admin role required"><Edit2 size={14} /> Edit</PermButton>
+                  </td>
                 </tr>
               ))}</tbody>
             </table>
@@ -505,6 +559,7 @@ function Customers({ token, user }: { token: string; user: User }) {
         ) : <Empty>No customers match your search. {can(user.role, 'createCustomer') ? 'Add your first customer to get started.' : ''}</Empty>}
       </article>
       {adding && <Modal title="Add customer" onClose={() => setAdding(false)}><CustomerForm token={token} onDone={() => { setAdding(false); void load(); }} /></Modal>}
+      {editing && <Modal title="Edit customer" onClose={() => setEditing(null)}><CustomerForm token={token} initial={editing} onDone={() => { setEditing(null); void load(); }} /></Modal>}
     </>
   );
 }
@@ -532,8 +587,8 @@ function ProductDetail({ token, user, id }: { token: string; user: User; id: str
           <p className="muted">{String(product.sku)} · {String(product.category)}</p>
         </div>
         <div className="head-actions">
-          {can(user.role, 'stockMovement') && <button className="quiet" onClick={() => setMoving(true)}><ArrowDownLeft size={16} /> Stock movement</button>}
-          {can(user.role, 'editProduct') && <button onClick={() => setEditing(true)}><Edit2 size={16} /> Edit</button>}
+          <PermButton allowed={can(user.role, 'stockMovement')} className="quiet" onClick={() => setMoving(true)} deniedTitle="Warehouse or Admin role required"><ArrowDownLeft size={16} /> Stock movement</PermButton>
+          <PermButton allowed={can(user.role, 'editProduct')} onClick={() => setEditing(true)} deniedTitle="Warehouse or Admin role required"><Edit2 size={16} /> Edit product</PermButton>
         </div>
       </div>
       <div className="detail-grid">
@@ -575,6 +630,8 @@ function Products({ token, user }: { token: string; user: User }) {
   const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
+  const [moving, setMoving] = useState<Record<string, unknown> | null>(null);
   const load = (q = search) => api<{ data: Record<string, unknown>[] }>(`/products?search=${encodeURIComponent(q)}`, token).then(x => setData(x.data));
   useEffect(() => { void load(); }, [token]);
   if (id) return <ProductDetail token={token} user={user} id={id} />;
@@ -583,8 +640,9 @@ function Products({ token, user }: { token: string; user: User }) {
     <>
       <div className="page-head">
         <div><p className="eyebrow">INVENTORY</p><h1>Stock control</h1><p className="muted">Know what is available before you promise it.</p></div>
-        {can(user.role, 'createProduct') && <button onClick={() => setAdding(true)}><Plus size={17} /> Add product</button>}
+        <PermButton allowed={can(user.role, 'createProduct')} onClick={() => setAdding(true)} deniedTitle="Warehouse or Admin role required"><Plus size={17} /> Add product</PermButton>
       </div>
+      <RoleHint user={user} module="inventory" />
       <div className="toolbar">
         <Search size={18} />
         <input placeholder="Search product, SKU or category" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && load(search)} />
@@ -592,7 +650,7 @@ function Products({ token, user }: { token: string; user: User }) {
       </div>
       <article className="panel">
         {data.length ? (
-          <table><thead><tr><th>Product</th><th>SKU</th><th>Warehouse</th><th>Unit price</th><th>Available</th><th>Alert at</th></tr></thead>
+          <table><thead><tr><th>Product</th><th>SKU</th><th>Warehouse</th><th>Unit price</th><th>Available</th><th>Alert at</th><th>Actions</th></tr></thead>
             <tbody>{data.map(p => (
               <tr key={String(p.id)} className="clickable" onClick={() => navigate('products', String(p.id))}>
                 <td><b>{String(p.name)}</b><small>{String(p.category)}</small></td>
@@ -600,12 +658,18 @@ function Products({ token, user }: { token: string; user: User }) {
                 <td>{fmtCurrency(Number(p.unit_price))}</td>
                 <td className={Number(p.current_stock) <= Number(p.min_stock) ? 'danger' : ''}>{String(p.current_stock)}</td>
                 <td>{String(p.min_stock)}</td>
+                <td className="actions" onClick={e => e.stopPropagation()}>
+                  <PermButton allowed={can(user.role, 'editProduct')} className="row-action" onClick={() => setEditing(p)} deniedTitle="Warehouse or Admin role required"><Edit2 size={14} /> Edit</PermButton>
+                  <PermButton allowed={can(user.role, 'stockMovement')} className="row-action quiet" onClick={() => setMoving(p)} deniedTitle="Warehouse or Admin role required"><ArrowDownLeft size={14} /> Stock</PermButton>
+                </td>
               </tr>
             ))}</tbody>
           </table>
-        ) : <Empty>No products found. {can(user.role, 'createProduct') ? 'Add your first product to start tracking inventory.' : ''}</Empty>}
+        ) : <Empty>No products found. {can(user.role, 'createProduct') ? 'Add your first product to start tracking inventory.' : 'Sign in as Warehouse or Admin to add products.'}</Empty>}
       </article>
       {adding && <Modal title="Add product" onClose={() => setAdding(false)}><ProductForm token={token} onDone={() => { setAdding(false); void load(); }} /></Modal>}
+      {editing && <Modal title="Edit product" onClose={() => setEditing(null)}><ProductForm token={token} initial={editing} onDone={() => { setEditing(null); void load(); }} /></Modal>}
+      {moving && <Modal title="Record stock movement" onClose={() => setMoving(null)}><StockMovementForm token={token} productId={String(moving.id)} onDone={() => { setMoving(null); void load(); }} /></Modal>}
     </>
   );
 }
@@ -640,8 +704,10 @@ function ChallanDetail({ token, user, id }: { token: string; user: User; id: str
         </div>
         <div className="head-actions">
           <Badge>{String(challan.status)}</Badge>
-          {challan.status === 'DRAFT' && can(user.role, 'confirmChallan') && (
-            <button onClick={confirm} disabled={busy}><ArrowOut size={16} /> {busy ? 'Confirming…' : 'Confirm challan'}</button>
+          {challan.status === 'DRAFT' && (
+            <PermButton allowed={can(user.role, 'confirmChallan')} onClick={confirm} disabled={busy} deniedTitle="Sales or Admin role required">
+              <ArrowOut size={16} /> {busy ? 'Confirming…' : 'Confirm challan'}
+            </PermButton>
           )}
         </div>
       </div>
@@ -691,8 +757,9 @@ function Challans({ token, user }: { token: string; user: User }) {
     <>
       <div className="page-head">
         <div><p className="eyebrow">FULFILMENT</p><h1>Sales challans</h1><p className="muted">Draft carefully. Confirm confidently.</p></div>
-        {can(user.role, 'createChallan') && <button onClick={() => setAdding(true)}><Plus size={17} /> New challan</button>}
+        <PermButton allowed={can(user.role, 'createChallan')} onClick={() => setAdding(true)} deniedTitle="Sales or Admin role required"><Plus size={17} /> New challan</PermButton>
       </div>
+      <RoleHint user={user} module="challans" />
       <article className="panel">
         {data.length ? (
           <table><thead><tr><th>Challan no.</th><th>Customer</th><th>Units</th><th>Created by</th><th>Date</th><th>Status</th></tr></thead>
