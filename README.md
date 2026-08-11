@@ -1,103 +1,53 @@
-# Nexus Ops - Mini ERP + CRM Operations Portal
+# Nexus Ops
 
-Nexus Ops is a focused operations portal for a wholesale distributor. It balances an admin-friendly CRM with the operational controls that make sales dispatch safe: role-based access, low-stock visibility, and transactional stock deduction during challan confirmation.
+Mini ERP + CRM operations portal for a wholesale distributor. Nexus Ops connects sales, warehouse, and accounts teams in one workspace — with role-based access, customer follow-ups, inventory control, and safe sales challan dispatch.
 
-**Live API:** https://nexus-ops-api.onrender.com
+**Live app:** https://nexus-opss.vercel.app  
+**API:** https://nexus-ops-api.onrender.com
 
-## What is included
+## Features
 
-- JWT login with Admin, Sales, Warehouse, and Accounts roles
-- Customer CRM: search, pagination, detail view, edit, follow-up timeline
-- Products, warehouse location, stock thresholds, manual IN/OUT movements, and auditable movement log
-- Sales challans with automatic numbers, multi-product rows, drafts, confirmation, immutable item snapshots, and negative-stock prevention
-- Responsive React **Operations Pulse** dashboard with metric cards, low-stock alerts, and recent challan activity
-- PostgreSQL schema, Docker Compose, seed data, and Postman collection
+- **Operations Pulse dashboard** — active customers, low-stock alerts, confirmed challans today, and recent dispatch activity
+- **Customer CRM** — add, edit, search, and filter customers; detail view with follow-up timeline
+- **Inventory** — product catalog with SKU, pricing, warehouse location, and minimum-stock alerts
+- **Stock movements** — auditable IN/OUT log with quantity, reason, user, and timestamp
+- **Sales challans** — multi-product drafts, auto-generated challan numbers, confirmation with safe stock deduction
+- **Role-based access** — Admin, Sales, Warehouse, and Accounts with UI and API enforcement
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | React, TypeScript, Vite |
+| Backend | Node.js, TypeScript, Express |
+| Database | PostgreSQL (Neon) |
+| Auth | JWT |
+| Validation | Zod |
+| Deployment | Vercel (frontend) · Render (API) · Neon (database) |
 
 ## Architecture
 
 ```text
-React + Vite (apps/web) --> Express REST API (apps/api) --> PostgreSQL (Neon)
-                              | JWT role middleware
-                              | Zod validation
-                              + DB transactions / row locks for dispatch confirmation
+React + Vite (apps/web)  →  Express REST API (apps/api)  →  PostgreSQL
+                                 JWT role middleware
+                                 Zod request validation
+                                 Transactions + row locks for stock changes
 ```
 
-The API validates at the request boundary. Inventory-changing actions use a PostgreSQL transaction with `SELECT ... FOR UPDATE`. A confirmed challan writes an item snapshot and matching OUT movements in the same transaction, so a failed stock check cannot leave a half-created challan or partial stock adjustment.
+Inventory-changing actions run inside a PostgreSQL transaction with `SELECT … FOR UPDATE`. When a challan is confirmed, product snapshots and OUT stock movements are written in the same transaction — a failed stock check cannot leave partial updates.
 
-### Role permissions
+## Roles
 
 | Role | Access |
 | --- | --- |
-| **Admin** | Full read/write on all modules |
-| **Sales** | Customer CRM, follow-ups, challan create/confirm |
-| **Warehouse** | Product create/edit, manual stock IN/OUT movements |
-| **Accounts** | Read-only access to dashboard, customers, products, challans |
-
-UI actions are hidden or disabled when a role lacks permission; the API enforces the same rules.
-
-## Local setup
-
-**Prerequisites:** Node.js 20+ and PostgreSQL 16+ (or Docker Desktop).
-
-1. Copy environment templates:
-
-   ```bash
-   copy apps\api\.env.example apps\api\.env
-   copy apps\web\.env.example apps\web\.env
-   ```
-
-2. Create the database and set `DATABASE_URL` in `apps/api/.env`.
-
-3. Install, migrate, seed, and run:
-
-   ```bash
-   npm install
-   npm run db:migrate
-   npm run db:seed
-   npm run dev
-   ```
-
-   - Web: http://localhost:5173
-   - API: http://localhost:4000
-   - Health: http://localhost:4000/health
-
-### Docker database option
-
-```bash
-docker compose up -d db
-```
-
-Use the default `DATABASE_URL` from `apps/api/.env.example`, then run migrate/seed as above.
-
-## Environment variables
-
-### API (`apps/api/.env`)
-
-| Variable | Description |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_SECRET` | Secret for signing JWT tokens |
-| `PORT` | API port (default `4000`) |
-| `CORS_ORIGIN` | Allowed frontend origin(s), comma-separated |
-
-### Web (`apps/web/.env`)
-
-| Variable | Description |
-| --- | --- |
-| `VITE_API_URL` | Backend API base URL |
-
-## Database migration and seed
-
-```bash
-npm run db:migrate   # applies apps/api/src/db/schema.sql
-npm run db:seed      # demo users, products, and a sample customer
-```
-
-Re-run seed safely; it uses `ON CONFLICT DO NOTHING` for idempotent inserts.
+| Admin | Full access to all modules |
+| Sales | Customers, follow-ups, challans |
+| Warehouse | Products, stock movements |
+| Accounts | Read-only across all modules |
 
 ## Demo credentials
 
-All seeded users use password **`Campus@2026`**.
+Password for all accounts: **`Campus@2026`**
 
 | Role | Email |
 | --- | --- |
@@ -106,113 +56,100 @@ All seeded users use password **`Campus@2026`**.
 | Warehouse | `warehouse@nexus.test` |
 | Accounts | `accounts@nexus.test` |
 
-## API summary
+## Local setup
 
-| Area | Endpoints |
+**Requirements:** Node.js 20+, PostgreSQL 16+ (or Docker)
+
+```bash
+git clone https://github.com/Deeksha-HL/nexus-ops.git
+cd nexus-ops
+npm install
+
+copy apps\api\.env.example apps\api\.env
+copy apps\web\.env.example apps\web\.env
+# Set DATABASE_URL in apps/api/.env
+
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+| Service | URL |
+| --- | --- |
+| Frontend | http://localhost:5173 |
+| API | http://localhost:4000 |
+| Health check | http://localhost:4000/health |
+
+**Docker database:** `docker compose up -d db` — then use the default `DATABASE_URL` from `apps/api/.env.example`.
+
+## Environment variables
+
+**API** (`apps/api/.env`)
+
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | JWT signing secret |
+| `PORT` | Server port (default `4000`) |
+| `CORS_ORIGIN` | Allowed frontend origin |
+
+**Web** (`apps/web/.env`)
+
+| Variable | Description |
+| --- | --- |
+| `VITE_API_URL` | Backend API URL |
+
+## API endpoints
+
+| Module | Routes |
 | --- | --- |
 | Auth | `POST /auth/login` |
 | Dashboard | `GET /dashboard` |
-| Customers | `GET/POST /customers`, `GET/PUT /customers/:id`, `POST /customers/:id/followups` |
-| Products | `GET/POST /products`, `GET/PUT /products/:id`, `GET/POST /products/:id/movements` |
-| Challans | `GET/POST /challans`, `GET /challans/:id`, `PATCH /challans/:id/confirm` |
+| Customers | `GET/POST /customers` · `GET/PUT /customers/:id` · `POST /customers/:id/followups` |
+| Products | `GET/POST /products` · `GET/PUT /products/:id` · `GET/POST /products/:id/movements` |
+| Challans | `GET/POST /challans` · `GET /challans/:id` · `PATCH /challans/:id/confirm` |
 
-Import **`postman/Nexus-Ops.postman_collection.json`** and set `baseUrl` and `token` variables.
+A Postman collection is available at `postman/Nexus-Ops.postman_collection.json`.
+
+## Project structure
+
+```text
+nexus-ops/
+├── apps/
+│   ├── api/          Express REST API
+│   └── web/          React frontend
+├── postman/          API collection
+├── docker-compose.yml
+└── vercel.json
+```
 
 ## Deployment
 
-### 1. PostgreSQL on Neon
+**Frontend (Vercel)**
 
-Create a project and database on [Neon](https://neon.tech). Copy the connection string into `DATABASE_URL`.
+- Build: `npm run build -w @nexus/web`
+- Output: `apps/web/dist`
+- Env: `VITE_API_URL=https://nexus-ops-api.onrender.com`
 
-### 2. API on Render
+**Backend (Render)**
 
-- **Root directory:** repository root (monorepo)
-- **Build command:** `npm install && npm run build -w @nexus/api`
-- **Start command:** `npm run start -w @nexus/api`
-- **Environment variables:**
-  - `DATABASE_URL` — Neon connection string
-  - `JWT_SECRET` — strong random secret
-  - `CORS_ORIGIN` — your Vercel frontend URL (e.g. `https://nexus-ops.vercel.app`)
-  - `PORT` — `4000` (Render sets this automatically; optional)
+- Build: `npm install && npm run build -w @nexus/api`
+- Start: `npm run start -w @nexus/api`
+- Env: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`
 
-After first deploy, open the Render shell and run:
+Run migration and seed once after the first deploy:
 
 ```bash
 npm run db:migrate -w @nexus/api
 npm run db:seed -w @nexus/api
 ```
 
-**Current deployment:** https://nexus-ops-api.onrender.com
+## Known limitations
 
-### 3. Frontend on Vercel
+- Challan cancellation is not implemented; stock reversal would need an audit/approval workflow.
+- Challan numbers use a time-based sequence suitable for demo use, not high-volume production.
+- Accounts role is read-only by design; invoicing is out of scope.
 
-| Setting | Value |
-| --- | --- |
-| Framework Preset | Vite |
-| Root Directory | `apps/web` |
-| Build Command | `npm run build` |
-| Output Directory | `dist` |
-| Install Command | `npm install` (run from repo root, or set root to monorepo root with `-w @nexus/web`) |
+## License
 
-**Recommended monorepo setup (Vercel project root = repo root):**
-
-| Setting | Value |
-| --- | --- |
-| Root Directory | `.` (repository root) |
-| Build Command | `npm run build -w @nexus/web` |
-| Output Directory | `apps/web/dist` |
-| Install Command | `npm install` |
-
-**Environment variable:**
-
-```
-VITE_API_URL=https://nexus-ops-api.onrender.com
-```
-
-Add a `vercel.json` at the repo root (included) for SPA routing.
-
-### 4. Post-deploy checklist
-
-1. Set `CORS_ORIGIN` on Render to the Vercel URL.
-2. Test login and one confirmed challan end-to-end.
-3. Verify stock movement appears on the product detail page.
-
-## Assumptions and known limitations
-
-- **Accounts** users have read-only access; invoice/accounting operations are out of scope.
-- **Challan cancellation** is not implemented. Reversing stock after confirmation requires an approval/audit policy; the schema includes a `CANCELLED` enum value for future use but no reversal endpoint exists.
-- **Challan numbers** use a time-based readable sequence (`SC-YYYY-XXXXXX`). Replace with a database sequence for high-volume production.
-- **Product stock on edit** can be adjusted directly by Warehouse/Admin via the edit form; manual movements are the preferred audit path for day-to-day changes.
-
-## Postman collection
-
-Location: **`postman/Nexus-Ops.postman_collection.json`**
-
-Set `baseUrl` to `http://localhost:4000` locally or `https://nexus-ops-api.onrender.com` for production. Run **Login (Sales)** first to populate the `token` variable.
-
-## Round 1 submission (fill before Google Form)
-
-| Item | Your link |
-| --- | --- |
-| **GitHub repository** | https://github.com/Deeksha-HL/nexus-ops |
-| **Live frontend (Vercel)** | _Add after deploy — e.g. https://nexus-ops.vercel.app_ |
-| **Live backend API (Render)** | https://nexus-ops-api.onrender.com |
-| **Screen recording** | _Add Google Drive / Loom / YouTube link_ |
-| **Postman collection** | `postman/Nexus-Ops.postman_collection.json` (in repo) |
-
-**Test credentials (all roles):** password `Campus@2026` — see table above.
-
-**Recommended 2–3 min demo flow for recording:**
-1. Login as **Sales** → dashboard (Operations Pulse)
-2. **Customers** → search → add/edit customer → add follow-up
-3. Login as **Warehouse** → **Inventory** → add/edit product → stock IN movement
-4. Login as **Sales** → **Challans** → create multi-product draft → confirm → show reduced stock + movement log
-5. Login as **Accounts** → show read-only access
-
-## Submission checklist
-
-- [x] Push repository to GitHub with incremental commits
-- [ ] Deploy frontend to Vercel; add URL in table above
-- [x] Backend deployed on Render
-- [ ] Record 2–3 minute screen demo (mandatory for Round 1)
-- [ ] Submit Google Form with repo, URLs, recording link, and credentials
+Built as a campus drive case study project.
