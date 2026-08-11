@@ -1,0 +1,13 @@
+{
+  "name": "nexus-ops",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w @nexus/api\" \"npm run dev -w @nexus/web\"",
+    "build": "npm run build -w @nexus/api && npm run build -w @nexus/web",
+    "start": "npm run start -w @nexus/api",
+    "db:migrate": "npm run db:migrate -w @nexus/api",
+    "db:seed": "npm run db:seed -w @nexus/api"
+  },
+  "devDependencies": {"concurrently": "^9.1.2"}
+}

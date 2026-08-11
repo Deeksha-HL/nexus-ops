@@ -1,0 +1,14 @@
+{
+  "info": {"name":"Nexus Ops API","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "variable": [{"key":"baseUrl","value":"http://localhost:4000"},{"key":"token","value":""},{"key":"customerId","value":""},{"key":"productId","value":""}],
+  "item": [
+    {"name":"Login (Sales)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/auth/login","body":{"mode":"raw","raw":"{\n  \"email\": \"sales@nexus.test\",\n  \"password\": \"Campus@2026\"\n}"}},"event":[{"listen":"test","script":{"exec":["pm.collectionVariables.set('token', pm.response.json().token);"]}}]},
+    {"name":"Operations pulse","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/dashboard"}},
+    {"name":"Search customers","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/customers?search=Bloom&page=1&limit=10"}},
+    {"name":"Add follow-up","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/customers/{{customerId}}/followups","body":{"mode":"raw","raw":"{\"note\":\"Called to confirm seasonal order forecast\",\"followUpDate\":\"2026-08-14\"}"}}},
+    {"name":"List products","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/products"}},
+    {"name":"Stock IN movement (Warehouse/Admin)","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/products/{{productId}}/movements","body":{"mode":"raw","raw":"{\"quantity\":10,\"movementType\":\"IN\",\"reason\":\"Goods received note GRN-1042\"}"}}},
+    {"name":"Create draft challan","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/challans","body":{"mode":"raw","raw":"{\"customerId\":\"{{customerId}}\",\"status\":\"DRAFT\",\"items\":[{\"productId\":\"{{productId}}\",\"quantity\":2}]}"}}},
+    {"name":"Confirm challan","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/challans","body":{"mode":"raw","raw":"{\"customerId\":\"{{customerId}}\",\"status\":\"CONFIRMED\",\"items\":[{\"productId\":\"{{productId}}\",\"quantity\":2}]}"}}}
+  ]
+}

@@ -1,0 +1,5 @@
+import bcrypt from 'bcryptjs'; import { query, pool } from './index.js';
+const password=await bcrypt.hash('Campus@2026',10);
+for (const [name,email,role] of [['Aarav Admin','admin@nexus.test','ADMIN'],['Siya Sales','sales@nexus.test','SALES'],['Waseem Warehouse','warehouse@nexus.test','WAREHOUSE'],['Anika Accounts','accounts@nexus.test','ACCOUNTS']]) await query('INSERT INTO users(name,email,password_hash,role) VALUES($1,$2,$3,$4) ON CONFLICT(email) DO NOTHING',[name,email,password,role]);
+await query("INSERT INTO products(name,sku,category,unit_price,current_stock,min_stock,warehouse) VALUES ('Cedar Brew Coffee','CBC-250','Beverages',340,18,12,'North Hub'),('Saffron Chai Blend','SCB-100','Beverages',220,6,10,'North Hub'),('EcoServe Cups','ESC-50','Packaging',180,42,15,'South Hub') ON CONFLICT(sku) DO NOTHING");
+await query("INSERT INTO customers(name,mobile,email,business_name,type,address,status,follow_up_date,notes) VALUES ('Rhea Shah','9876543210','rhea@bloom.test','Bloom & Barrel','WHOLESALE','Koregaon Park, Pune','ACTIVE',CURRENT_DATE + 3,'Prefers morning delivery windows') ON CONFLICT DO NOTHING"); console.log('Seeded demo data.'); await pool.end();
