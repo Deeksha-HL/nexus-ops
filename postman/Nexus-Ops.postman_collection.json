@@ -1,14 +1,38 @@
 {
-  "info": {"name":"Nexus Ops API","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
-  "variable": [{"key":"baseUrl","value":"http://localhost:4000"},{"key":"token","value":""},{"key":"customerId","value":""},{"key":"productId","value":""}],
+  "info": {"name": "Nexus Ops API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:4000"},
+    {"key": "token", "value": ""},
+    {"key": "customerId", "value": ""},
+    {"key": "productId", "value": ""},
+    {"key": "challanId", "value": ""}
+  ],
   "item": [
-    {"name":"Login (Sales)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/auth/login","body":{"mode":"raw","raw":"{\n  \"email\": \"sales@nexus.test\",\n  \"password\": \"Campus@2026\"\n}"}},"event":[{"listen":"test","script":{"exec":["pm.collectionVariables.set('token', pm.response.json().token);"]}}]},
-    {"name":"Operations pulse","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/dashboard"}},
-    {"name":"Search customers","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/customers?search=Bloom&page=1&limit=10"}},
-    {"name":"Add follow-up","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/customers/{{customerId}}/followups","body":{"mode":"raw","raw":"{\"note\":\"Called to confirm seasonal order forecast\",\"followUpDate\":\"2026-08-14\"}"}}},
-    {"name":"List products","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/products"}},
-    {"name":"Stock IN movement (Warehouse/Admin)","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/products/{{productId}}/movements","body":{"mode":"raw","raw":"{\"quantity\":10,\"movementType\":\"IN\",\"reason\":\"Goods received note GRN-1042\"}"}}},
-    {"name":"Create draft challan","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/challans","body":{"mode":"raw","raw":"{\"customerId\":\"{{customerId}}\",\"status\":\"DRAFT\",\"items\":[{\"productId\":\"{{productId}}\",\"quantity\":2}]}"}}},
-    {"name":"Confirm challan","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/challans","body":{"mode":"raw","raw":"{\"customerId\":\"{{customerId}}\",\"status\":\"CONFIRMED\",\"items\":[{\"productId\":\"{{productId}}\",\"quantity\":2}]}"}}}
+    {
+      "name": "Login (Sales)",
+      "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/auth/login", "body": {"mode": "raw", "raw": "{\n  \"email\": \"sales@nexus.test\",\n  \"password\": \"Campus@2026\"\n}"}},
+      "event": [{"listen": "test", "script": {"exec": ["pm.collectionVariables.set('token', pm.response.json().token);"]}}]
+    },
+    {"name": "Operations pulse", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": "{{baseUrl}}/dashboard"}},
+    {"name": "Search customers", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": "{{baseUrl}}/customers?search=Bloom&page=1&limit=10"}},
+    {
+      "name": "Create customer",
+      "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/customers", "body": {"mode": "raw", "raw": "{\n  \"name\": \"Test Contact\",\n  \"mobile\": \"9999988888\",\n  \"businessName\": \"Test Traders\",\n  \"type\": \"RETAIL\",\n  \"address\": \"MG Road, Pune\",\n  \"status\": \"LEAD\"\n}"}},
+      "event": [{"listen": "test", "script": {"exec": ["if (pm.response.code === 201) pm.collectionVariables.set('customerId', pm.response.json().id);"]}}]
+    },
+    {"name": "Customer detail", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": "{{baseUrl}}/customers/{{customerId}}"}},
+    {"name": "Add follow-up", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/customers/{{customerId}}/followups", "body": {"mode": "raw", "raw": "{\"note\":\"Called to confirm seasonal order forecast\",\"followUpDate\":\"2026-08-14\"}"}}},
+    {"name": "List products", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": "{{baseUrl}}/products"}},
+    {"name": "Product detail", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": "{{baseUrl}}/products/{{productId}}"}},
+    {"name": "Stock movements", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": "{{baseUrl}}/products/{{productId}}/movements"}},
+    {"name": "Stock IN movement (Warehouse/Admin)", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/products/{{productId}}/movements", "body": {"mode": "raw", "raw": "{\"quantity\":10,\"movementType\":\"IN\",\"reason\":\"Goods received note GRN-1042\"}"}}},
+    {
+      "name": "Create draft challan (multi-product)",
+      "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/challans", "body": {"mode": "raw", "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"status\": \"DRAFT\",\n  \"items\": [\n    {\"productId\": \"{{productId}}\", \"quantity\": 2}\n  ]\n}"}},
+      "event": [{"listen": "test", "script": {"exec": ["if (pm.response.code === 201) pm.collectionVariables.set('challanId', pm.response.json().id);"]}}]
+    },
+    {"name": "Challan detail", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": "{{baseUrl}}/challans/{{challanId}}"}},
+    {"name": "Confirm draft challan", "request": {"method": "PATCH", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": "{{baseUrl}}/challans/{{challanId}}/confirm"}},
+    {"name": "Create confirmed challan", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "url": "{{baseUrl}}/challans", "body": {"mode": "raw", "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"status\": \"CONFIRMED\",\n  \"items\": [{\"productId\": \"{{productId}}\", \"quantity\": 1}]\n}"}}}
   ]
 }
