@@ -160,17 +160,28 @@ Backend: Render
 
 Database: Neon
 
-## Screenshots
+## 📸 Screenshots
 
-Add screenshots for:
+### Login
+![Login](assets/Login.png)
 
-- Login
-- Dashboard
-- CRM
-- Inventory
-- Product Details
-- Challans
-- Stock Movements
+### Dashboard
+![Dashboard](assets/Dashboard.png)
+
+### CRM
+![CRM](assets/CRM.png)
+
+### Challan
+![Challan](assets/Challan.png)
+
+### Inventory
+![Inventory](assets/Inventory.png)
+
+### Product Details
+![Product Details](assets/Product%20Details.png)
+
+### Stock Movement
+![Stock Movement](assets/Stock%20Movement.png)
 
 ## Security
 
